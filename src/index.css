@@ -8,15 +8,14 @@
 
 @layer base {
   :root {
-    /* Core terminal colors - exact beige background */
-    --background: 44 30% 80%; /* #dbd3bd exact color */
-    --foreground: 0 0% 15%; /* Darker text for better contrast */
-    --surface: 24 6% 16%; /* Dark panels for contrast */
+    /* Core terminal colors - warm blacks */
+    --background: 24 10% 10%; /* #1C1917 warm black */
+    --foreground: 60 9% 98%; /* #FAFAF9 warm white */
+    --surface: 24 6% 16%; /* #292524 raised panels */
     --terminal-border: 24 9% 27%; /* #44403C subtle borders */
-    --scanline-grey: 0 0% 45%; /* Neutral grey for scanlines */
     
     /* Terminal phosphor colors */
-    --sherpa-green: 130 50% 35%; /* Darker green for better contrast */
+    --sherpa-green: 166 100% 66%; /* #00E5A0 Bishma's responses */
     --user-cyan: 180 100% 90%; /* #B3F5FF user input */
     --terminal-amber: 45 100% 70%; /* #FFE66D warnings */
     
@@ -135,7 +134,7 @@
   /* Terminal Effects */
   .terminal-screen {
     background: 
-      linear-gradient(0deg, transparent 98%, hsl(var(--scanline-grey) / 0.03) 100%),
+      linear-gradient(0deg, transparent 98%, hsl(var(--sherpa-green) / 0.03) 100%),
       radial-gradient(ellipse at center, transparent 0%, hsl(var(--background)) 100%);
     position: relative;
   }
@@ -151,8 +150,8 @@
       0deg,
       transparent,
       transparent 2px,
-      hsl(var(--scanline-grey) / var(--scanline-opacity)) 2px,
-      hsl(var(--scanline-grey) / var(--scanline-opacity)) 4px
+      hsl(var(--sherpa-green) / var(--scanline-opacity)) 2px,
+      hsl(var(--sherpa-green) / var(--scanline-opacity)) 4px
     );
     pointer-events: none;
     z-index: 1;
