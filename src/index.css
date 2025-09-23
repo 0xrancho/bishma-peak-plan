@@ -2,41 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Bishma Terminal Design System - PostHog-inspired retro terminal aesthetics */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
+    /* Core terminal colors - warm blacks */
+    --background: 24 10% 10%; /* #1C1917 warm black */
+    --foreground: 60 9% 98%; /* #FAFAF9 warm white */
+    --surface: 24 6% 16%; /* #292524 raised panels */
+    --terminal-border: 24 9% 27%; /* #44403C subtle borders */
+    
+    /* Terminal phosphor colors */
+    --sherpa-green: 166 100% 66%; /* #00E5A0 Bishma's responses */
+    --user-cyan: 180 100% 90%; /* #B3F5FF user input */
+    --terminal-amber: 45 100% 70%; /* #FFE66D warnings */
+    
+    /* Priority mountain colors */
+    --summit-red: 0 85% 69%; /* #FF6B6B urgent */
+    --alpine-cyan: 166 69% 57%; /* #4ECDC4 priority */
+    --basecamp-green: 100 71% 69%; /* #95E77E safe */
+    --sherpa-yellow: 53 100% 70%; /* #FFE66D wisdom */
+    
+    /* Syntax highlighting */
+    --keyword-pink: 326 100% 74%; /* #FF79C6 */
+    --string-cyan: 191 97% 77%; /* #8BE9FD */
+    --comment-gray: 225 15% 45%; /* #6272A4 */
+    
+    /* Semantic mappings */
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --popover: var(--surface);
+    --popover-foreground: var(--foreground);
+    --primary: var(--sherpa-green);
+    --primary-foreground: var(--background);
+    --secondary: var(--surface);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--terminal-border);
+    --muted-foreground: 24 5% 64%; /* #A8A29E */
+    --accent: var(--alpine-cyan);
+    --accent-foreground: var(--background);
+    --destructive: var(--summit-red);
+    --destructive-foreground: var(--foreground);
+    --border: var(--terminal-border);
+    --input: var(--terminal-border);
+    --ring: var(--sherpa-green);
+    --radius: 0; /* Sharp terminal edges */
+    
+    /* Terminal effects */
+    --scanline-opacity: 0.05;
+    --glow-intensity: 0.3;
+    --typewriter-speed: 30ms;
 
     --sidebar-background: 0 0% 98%;
 
@@ -100,6 +117,128 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-mono;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
   }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  .font-ui {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  /* Terminal Effects */
+  .terminal-screen {
+    background: 
+      linear-gradient(0deg, transparent 98%, hsl(var(--sherpa-green) / 0.03) 100%),
+      radial-gradient(ellipse at center, transparent 0%, hsl(var(--background)) 100%);
+    position: relative;
+  }
+
+  .terminal-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      hsl(var(--sherpa-green) / var(--scanline-opacity)) 2px,
+      hsl(var(--sherpa-green) / var(--scanline-opacity)) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .terminal-glow {
+    text-shadow: 0 0 5px hsl(var(--sherpa-green) / var(--glow-intensity));
+  }
+
+  .sherpa-text {
+    color: hsl(var(--sherpa-green));
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .user-text {
+    color: hsl(var(--user-cyan));
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .typewriter {
+    overflow: hidden;
+    white-space: nowrap;
+    animation: typing 2s steps(40, end), blink-caret 0.75s step-end infinite;
+  }
+
+  @keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+  }
+
+  @keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: hsl(var(--sherpa-green)) }
+  }
+
+  .terminal-cursor::after {
+    content: '█';
+    animation: blink 1s infinite;
+    color: hsl(var(--sherpa-green));
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  /* ASCII Art Styles */
+  .ascii-art {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1;
+    white-space: pre;
+    color: hsl(var(--sherpa-green) / 0.8);
+  }
+
+  /* Priority Styles */
+  .priority-summit { color: hsl(var(--summit-red)); }
+  .priority-alpine { color: hsl(var(--alpine-cyan)); }
+  .priority-basecamp { color: hsl(var(--basecamp-green)); }
+  .priority-sherpa { color: hsl(var(--sherpa-yellow)); }
+
+  /* Terminal Box Drawing */
+  .task-card {
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid hsl(var(--terminal-border));
+    background: hsl(var(--surface));
+    padding: 1rem;
+    margin: 0.5rem 0;
+  }
+
+  .progress-bar {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Command styles */
+  .command-prompt::before {
+    content: 'sherpa@basecamp:~$ ';
+    color: hsl(var(--sherpa-green));
+  }
+
+  .user-prompt::before {
+    content: 'you@local:~$ ';
+    color: hsl(var(--user-cyan));
+  }
+
+  /* Status indicators */
+  .status-ready::before { content: '[=] '; color: hsl(var(--basecamp-green)); }
+  .status-thinking::before { content: '[*] '; color: hsl(var(--sherpa-yellow)); }
+  .status-alert::before { content: '[!] '; color: hsl(var(--summit-red)); }
 }

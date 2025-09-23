@@ -19,6 +19,25 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        surface: "hsl(var(--surface))",
+        
+        // Terminal colors
+        "sherpa-green": "hsl(var(--sherpa-green))",
+        "user-cyan": "hsl(var(--user-cyan))",
+        "terminal-amber": "hsl(var(--terminal-amber))",
+        "terminal-border": "hsl(var(--terminal-border))",
+        
+        // Priority colors
+        "summit-red": "hsl(var(--summit-red))",
+        "alpine-cyan": "hsl(var(--alpine-cyan))",
+        "basecamp-green": "hsl(var(--basecamp-green))",
+        "sherpa-yellow": "hsl(var(--sherpa-yellow))",
+        
+        // Syntax colors
+        "keyword-pink": "hsl(var(--keyword-pink))",
+        "string-cyan": "hsl(var(--string-cyan))",
+        "comment-gray": "hsl(var(--comment-gray))",
+        
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
