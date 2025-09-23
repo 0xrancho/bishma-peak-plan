@@ -8,14 +8,14 @@
 
 @layer base {
   :root {
-    /* Core terminal colors - clean light beige background */
-    --background: 45 20% 92%; /* Clean light beige matching reference */
+    /* Core terminal colors - exact beige background */
+    --background: 40 48% 76%; /* #e0cfa4 exact color */
     --foreground: 0 0% 20%; /* Darker grey text for contrast */
     --surface: 24 6% 16%; /* Dark panels for contrast */
     --terminal-border: 24 9% 27%; /* #44403C subtle borders */
     
     /* Terminal phosphor colors */
-    --sherpa-green: 166 100% 66%; /* #00E5A0 Bishma's responses */
+    --sherpa-green: 130 50% 35%; /* Darker green for better contrast */
     --user-cyan: 180 100% 90%; /* #B3F5FF user input */
     --terminal-amber: 45 100% 70%; /* #FFE66D warnings */
     
