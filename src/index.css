@@ -13,6 +13,7 @@
     --foreground: 0 0% 15%; /* Darker text for better contrast */
     --surface: 24 6% 16%; /* Dark panels for contrast */
     --terminal-border: 24 9% 27%; /* #44403C subtle borders */
+    --scanline-grey: 0 0% 45%; /* Neutral grey for scanlines */
     
     /* Terminal phosphor colors */
     --sherpa-green: 130 50% 35%; /* Darker green for better contrast */
@@ -134,7 +135,7 @@
   /* Terminal Effects */
   .terminal-screen {
     background: 
-      linear-gradient(0deg, transparent 98%, hsl(var(--sherpa-green) / 0.03) 100%),
+      linear-gradient(0deg, transparent 98%, hsl(var(--scanline-grey) / 0.03) 100%),
       radial-gradient(ellipse at center, transparent 0%, hsl(var(--background)) 100%);
     position: relative;
   }
@@ -150,8 +151,8 @@
       0deg,
       transparent,
       transparent 2px,
-      hsl(var(--sherpa-green) / var(--scanline-opacity)) 2px,
-      hsl(var(--sherpa-green) / var(--scanline-opacity)) 4px
+      hsl(var(--scanline-grey) / var(--scanline-opacity)) 2px,
+      hsl(var(--scanline-grey) / var(--scanline-opacity)) 4px
     );
     pointer-events: none;
     z-index: 1;
