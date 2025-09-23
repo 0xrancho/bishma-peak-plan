@@ -9,8 +9,8 @@
 @layer base {
   :root {
     /* Core terminal colors - exact beige background */
-    --background: 40 48% 76%; /* #e0cfa4 exact color */
-    --foreground: 0 0% 20%; /* Darker grey text for contrast */
+    --background: 44 30% 80%; /* #dbd3bd exact color */
+    --foreground: 0 0% 15%; /* Darker text for better contrast */
     --surface: 24 6% 16%; /* Dark panels for contrast */
     --terminal-border: 24 9% 27%; /* #44403C subtle borders */
     
