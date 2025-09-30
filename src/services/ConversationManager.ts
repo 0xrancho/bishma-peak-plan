@@ -119,7 +119,13 @@ export class ConversationManager {
       };
 
     } catch (error) {
-      console.error('Conversation processing failed:', error);
+      console.error('❌ Conversation processing failed:', error);
+      console.error('Conversation error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        userInput: userInput,
+        timestamp: new Date().toISOString()
+      });
       return {
         message: "I'm having trouble processing that right now. Could you try rephrasing?",
         error: error instanceof Error ? error.message : 'Unknown error'

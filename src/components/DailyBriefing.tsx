@@ -101,6 +101,12 @@ const DailyBriefing = () => {
 
     } catch (err) {
       console.error('❌ Error loading tasks:', err);
+      console.error('Dashboard error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined,
+        hasCredentials: !!(apiKey && baseId),
+        timestamp: new Date().toISOString()
+      });
       setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
       setTimeout(() => setIsRefreshing(false), 500);

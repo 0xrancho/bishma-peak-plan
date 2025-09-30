@@ -389,7 +389,12 @@ Be conversational, intelligent, and genuinely helpful. Extract information natur
       };
 
     } catch (error) {
-      console.error('OpenAI API call failed:', error);
+      console.error('❌ OpenAI API call failed:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString()
+      });
       return {
         message: "I'm having trouble connecting right now. Please try again in a moment.",
         needsUserInput: true
@@ -484,6 +489,11 @@ Be conversational, intelligent, and genuinely helpful. Extract information natur
 
     } catch (error) {
       console.error('❌ Airtable read failed:', error);
+      console.error('Read error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        url: url,
+        timestamp: new Date().toISOString()
+      });
       throw error;
     }
   }
