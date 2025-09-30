@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Terminal } from 'lucide-react';
+import { Send, Terminal, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import TaskCard from './TaskCard';
+import RICEProgressIndicator from './RICEProgressIndicator';
+import APIKeyConfig from './APIKeyConfig';
+import { ConversationManager } from '@/services/ConversationManager';
+import { TaskState } from '@/types/TaskState';
 
-interface Message {
+interface ChatMessage {
   id: string;
   type: 'sherpa' | 'user' | 'system';
   content: string;
@@ -13,23 +16,27 @@ interface Message {
 }
 
 const TerminalChat = () => {
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       type: 'sherpa',
-      content: 'System initialized. Ready for input.',
+      content: 'System initialized. Ready for task prioritization.',
       timestamp: new Date()
     },
     {
-      id: '2', 
+      id: '2',
       type: 'sherpa',
-      content: 'I see you have 3 priority peaks ahead. Want to tackle that payment API issue first? It\'s looking pretty critical at 8,611m.',
+      content: 'Tell me about a task you need to prioritize. I\'ll help extract the RICE parameters through our conversation.',
       timestamp: new Date()
     }
   ]);
 
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [tasks, setTasks] = useState<TaskState[]>([]);
+  const [conversationManager, setConversationManager] = useState<ConversationManager | null>(null);
+  const [apiKeysConfigured, setApiKeysConfigured] = useState(false);
+  const [showApiConfig, setShowApiConfig] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -40,37 +47,60 @@ const TerminalChat = () => {
     scrollToBottom();
   }, [messages]);
 
-  const sampleTasks = [
-    {
-      title: "API Bug Fix",
-      priority: 'SUMMIT' as const,
-      progress: 67,
-      altitude: "8,611m",
-      eta: "2.5h",
-      status: 'IN_PROGRESS' as const
-    },
-    {
-      title: "Board Prep",
-      priority: 'ALPINE' as const,
-      progress: 25,
-      altitude: "6,102m", 
-      eta: "1.5h",
-      status: 'QUEUED' as const
-    },
-    {
-      title: "Email Greg",
-      priority: 'BASECAMP' as const,
-      progress: 0,
-      altitude: "2,100m",
-      eta: "15min",
-      status: 'QUEUED' as const
+  // Initialize conversation manager when API keys are available
+  useEffect(() => {
+    // Check environment variables first, then localStorage
+    const openaiKey = import.meta.env.VITE_OPENAI_API_KEY || localStorage.getItem('openai_api_key');
+    const airtableKey = import.meta.env.VITE_AIRTABLE_API_KEY || localStorage.getItem('airtable_api_key');
+    const airtableBase = import.meta.env.VITE_AIRTABLE_BASE_ID || localStorage.getItem('airtable_base_id');
+
+    if (openaiKey && airtableKey && airtableBase) {
+      const manager = new ConversationManager({
+        openaiApiKey: openaiKey,
+        airtableApiKey: airtableKey,
+        airtableBaseId: airtableBase
+      });
+      setConversationManager(manager);
+      setApiKeysConfigured(true);
+
+      // Load existing tasks
+      const state = manager.getCurrentState();
+      setTasks(state.incompleteTasks);
     }
-  ];
+  }, []);
+
+  const getTaskProgress = (task: TaskState) => {
+    return conversationManager?.getTaskProgress(task.id) || null;
+  };
+
+  const handleConfigSave = (keys: { openai: string; airtableKey: string; airtableBase: string }) => {
+    const manager = new ConversationManager({
+      openaiApiKey: keys.openai,
+      airtableApiKey: keys.airtableKey,
+      airtableBaseId: keys.airtableBase
+    });
+    setConversationManager(manager);
+    setApiKeysConfigured(true);
+    setShowApiConfig(false);
+
+    // Load existing tasks
+    const state = manager.getCurrentState();
+    setTasks(state.incompleteTasks);
+
+    // Add confirmation message
+    const confirmMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'system',
+      content: '✅ Configuration saved. Ready for RICE extraction!',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, confirmMessage]);
+  };
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
-    const userMessage: Message = {
+    const userMessage: ChatMessage = {
       id: Date.now().toString(),
       type: 'user',
       content: input,
@@ -81,30 +111,69 @@ const TerminalChat = () => {
     setInput('');
     setIsTyping(true);
 
-    // Simulate Bishma's response
-    setTimeout(() => {
-      const responses = [
-        "Got it. Updating your route plan...",
-        "That task is now prioritized. ETA updated to 3.2 hours.",
-        "Nice work. Marking that summit as complete.",
-        "Weather report: You have a clear window from 2-4 PM.",
-        "Heads up: That task is blocking 2 others in your queue.",
-        "Route suggestion: Tackle the API fix before the meeting.",
-        "System idle. What's next on your mind?"
-      ];
-      
-      const response = responses[Math.floor(Math.random() * responses.length)];
-      
-      const sherpaMessage: Message = {
+    if (!conversationManager) {
+      // Show API key configuration prompt
+      const sherpaMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'sherpa',
-        content: response,
+        content: 'I need your OpenAI and Airtable API keys to get started. Please configure them in settings.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, sherpaMessage]);
+      setIsTyping(false);
+      return;
+    }
+
+    try {
+      // Check if user is asking about existing tasks
+      const isTaskQuery = input.toLowerCase().includes('read this conversation') ||
+                         input.toLowerCase().includes('tell me the') ||
+                         input.toLowerCase().includes('what tasks') ||
+                         input.toLowerCase().includes('my tasks');
+
+      let response;
+      if (isTaskQuery) {
+        response = await conversationManager.queryTasks(input);
+      } else {
+        response = await conversationManager.processUserInput(input);
+      }
+
+      const sherpaMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'sherpa',
+        content: response.message,
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, sherpaMessage]);
-      setIsTyping(false);
-    }, 1500);
+
+      // Update tasks state
+      if (response.taskUpdates) {
+        setTasks(response.taskUpdates);
+      }
+
+      // Show completed tasks message
+      if (response.completedTasks && response.completedTasks.length > 0) {
+        const completionMessage: ChatMessage = {
+          id: (Date.now() + 2).toString(),
+          type: 'system',
+          content: `✅ ${response.completedTasks.length} task(s) synced to Airtable`,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, completionMessage]);
+      }
+
+    } catch (error) {
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'sherpa',
+        content: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
+
+    setIsTyping(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -117,17 +186,65 @@ const TerminalChat = () => {
     <div className="flex flex-col h-full">
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {/* API Configuration Status */}
+        {!apiKeysConfigured && (
+          <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded p-4">
+            <div className="sherpa-text font-mono text-sm mb-2">
+              <div className="status-warning">CONFIGURATION REQUIRED:</div>
+            </div>
+            <div className="text-xs font-mono text-muted-foreground mb-2">
+              Please configure your API keys to enable RICE extraction:
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-yellow-500" />
+                <span className="text-xs font-mono text-yellow-500">
+                  OpenAI API Key + Airtable API Key + Base ID needed
+                </span>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setShowApiConfig(true)}
+                className="bg-yellow-500 hover:bg-yellow-600 text-background"
+              >
+                Configure
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Current Tasks Display */}
-        <div className="mb-6">
-          <div className="sherpa-text font-mono text-sm mb-4">
-            <div className="status-ready">CURRENT PRIORITY PEAKS:</div>
+        {tasks.length > 0 && (
+          <div className="mb-6">
+            <div className="sherpa-text font-mono text-sm mb-4">
+              <div className="status-ready">RICE EXTRACTION PROGRESS:</div>
+            </div>
+            <div className="space-y-3">
+              {tasks.map((task) => {
+                const progress = getTaskProgress(task);
+                return progress ? (
+                  <RICEProgressIndicator
+                    key={task.id}
+                    task={task}
+                    missingParameters={progress.missingParameters}
+                  />
+                ) : null;
+              })}
+            </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {sampleTasks.map((task, index) => (
-              <TaskCard key={index} {...task} />
-            ))}
+        )}
+
+        {/* Empty state when no tasks */}
+        {tasks.length === 0 && apiKeysConfigured && (
+          <div className="mb-6 text-center py-8">
+            <div className="sherpa-text font-mono text-sm mb-2">
+              <div className="status-ready">READY FOR TASK INPUT:</div>
+            </div>
+            <div className="text-xs font-mono text-muted-foreground">
+              Tell me about a task you need to prioritize...
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Chat Messages */}
         {messages.map((message) => (
@@ -153,7 +270,7 @@ const TerminalChat = () => {
         {isTyping && (
           <div className="sherpa-text terminal-glow font-mono text-sm">
             <span className="status-thinking"></span>
-            <span className="terminal-cursor">Calculating route</span>
+            <span className="terminal-cursor">Processing RICE parameters</span>
           </div>
         )}
 
@@ -184,9 +301,17 @@ const TerminalChat = () => {
         </div>
         
         <div className="text-xs font-mono text-muted-foreground mt-2 text-center">
-          Pro tip: Try commands like "/today", "/summit task-name", or just describe what you need to do
+          Pro tip: Describe your tasks naturally - I'll extract the RICE parameters through conversation
         </div>
       </div>
+
+      {/* API Configuration Modal */}
+      {showApiConfig && (
+        <APIKeyConfig
+          onSave={handleConfigSave}
+          onCancel={() => setShowApiConfig(false)}
+        />
+      )}
     </div>
   );
 };
