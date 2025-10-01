@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Terminal, Settings } from 'lucide-react';
+import { useUser } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import RICEProgressIndicator from './RICEProgressIndicator';
@@ -16,6 +17,7 @@ interface ChatMessage {
 }
 
 const TerminalChat = () => {
+  const { user } = useUser();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
@@ -47,18 +49,25 @@ const TerminalChat = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Initialize conversation manager when API keys are available
+  // Initialize conversation manager when API keys and user are available
   useEffect(() => {
+    if (!user) {
+      console.log('⏳ Waiting for user to load...');
+      return;
+    }
+
     // Check environment variables first, then localStorage
     const openaiKey = import.meta.env.VITE_OPENAI_API_KEY || localStorage.getItem('openai_api_key');
     const airtableKey = import.meta.env.VITE_AIRTABLE_API_KEY || localStorage.getItem('airtable_api_key');
     const airtableBase = import.meta.env.VITE_AIRTABLE_BASE_ID || localStorage.getItem('airtable_base_id');
 
     if (openaiKey && airtableKey && airtableBase) {
+      console.log('🚀 Initializing ConversationManager for user:', user.id);
       const manager = new ConversationManager({
         openaiApiKey: openaiKey,
         airtableApiKey: airtableKey,
-        airtableBaseId: airtableBase
+        airtableBaseId: airtableBase,
+        userId: user.id
       });
       setConversationManager(manager);
       setApiKeysConfigured(true);
@@ -67,17 +76,23 @@ const TerminalChat = () => {
       const state = manager.getCurrentState();
       setTasks(state.incompleteTasks);
     }
-  }, []);
+  }, [user]);
 
   const getTaskProgress = (task: TaskState) => {
     return conversationManager?.getTaskProgress(task.id) || null;
   };
 
   const handleConfigSave = (keys: { openai: string; airtableKey: string; airtableBase: string }) => {
+    if (!user) {
+      console.error('❌ Cannot save config: user not loaded');
+      return;
+    }
+
     const manager = new ConversationManager({
       openaiApiKey: keys.openai,
       airtableApiKey: keys.airtableKey,
-      airtableBaseId: keys.airtableBase
+      airtableBaseId: keys.airtableBase,
+      userId: user.id
     });
     setConversationManager(manager);
     setApiKeysConfigured(true);

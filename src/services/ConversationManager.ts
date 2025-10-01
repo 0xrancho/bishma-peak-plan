@@ -7,6 +7,7 @@ export interface ConversationConfig {
   openaiApiKey: string;
   airtableApiKey: string;
   airtableBaseId: string;
+  userId: string;
 }
 
 export interface ConversationResponse {
@@ -21,11 +22,13 @@ export class ConversationManager {
   private openaiService: OpenAIService;
   private airtableService: AirtableService;
   private conversationHistory: Message[] = [];
+  private userId: string;
 
   constructor(config: ConversationConfig) {
+    this.userId = config.userId;
     this.taskStateManager = new TaskStateManager();
     this.airtableService = new AirtableService(config.airtableApiKey, config.airtableBaseId);
-    this.openaiService = new OpenAIService(config.openaiApiKey, this.taskStateManager, this.airtableService);
+    this.openaiService = new OpenAIService(config.openaiApiKey, this.taskStateManager, this.airtableService, config.userId);
   }
 
   async processUserInput(userInput: string): Promise<ConversationResponse> {
@@ -80,7 +83,8 @@ export class ConversationManager {
                   const airtableId = await this.airtableService.createTask(
                     task,
                     riceScore,
-                    this.taskStateManager.getSessionId()
+                    this.taskStateManager.getSessionId(),
+                    this.userId
                   );
 
                   console.log('✅ Airtable record created:', airtableId);
@@ -247,7 +251,8 @@ export class ConversationManager {
         await this.airtableService.createTask(
           task,
           riceScore,
-          this.taskStateManager.getSessionId()
+          this.taskStateManager.getSessionId(),
+          this.userId
         );
         this.taskStateManager.markAsSynced(taskId);
         return true;

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, Mountain, CheckCircle, RefreshCw } from 'lucide-react';
+import { useUser } from '@clerk/clerk-react';
 import { TaskStateManager } from '@/services/TaskStateManager';
 import { TaskState } from '@/types/TaskState';
 import { AirtableService, AirtableTask } from '@/services/AirtableService';
@@ -14,6 +15,7 @@ interface DashboardTask {
 }
 
 const DailyBriefing = () => {
+  const { user } = useUser();
   const today = new Date();
   const dateString = today.toISOString().split('T')[0];
   const [tasks, setTasks] = useState<DashboardTask[]>([]);
@@ -21,7 +23,12 @@ const DailyBriefing = () => {
   const [error, setError] = useState<string | null>(null);
 
   const loadTasksFromAirtable = async () => {
-    console.log('🔄 loadTasksFromAirtable called');
+    if (!user) {
+      console.log('⏳ User not loaded yet, waiting...');
+      return;
+    }
+
+    console.log('🔄 loadTasksFromAirtable called for userId:', user.id);
     setIsRefreshing(true);
     setError(null);
 
@@ -35,6 +42,7 @@ const DailyBriefing = () => {
         hasBaseId: !!baseId,
         apiKeyLength: apiKey?.length,
         baseId: baseId,
+        userId: user.id,
         fromEnv: !!import.meta.env.VITE_AIRTABLE_API_KEY
       });
 
@@ -46,38 +54,22 @@ const DailyBriefing = () => {
         return;
       }
 
-      // Fetch all tasks (not filtered by session - get ALL tasks)
-      const url = `https://api.airtable.com/v0/${baseId}/tblgA4jVOsYj0h76k`;
-      console.log('📡 Fetching from URL:', url);
+      // Use AirtableService with userId filtering
+      const airtableService = new AirtableService(apiKey, baseId);
+      const allTasks = await airtableService.getTasks(user.id);
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-        }
-      });
+      console.log('📊 Fetched from Airtable:', allTasks.length, 'tasks for user', user.id);
 
-      console.log('📥 Response status:', response.status, response.statusText);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Airtable error response:', errorText);
-        throw new Error(`Failed to fetch tasks: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log('📊 Fetched from Airtable:', data.records?.length || 0, 'records');
-      console.log('📋 Raw records:', data.records?.slice(0, 2));
-
-      // Convert Airtable records to dashboard tasks
-      const airtableTasks: DashboardTask[] = data.records
+      // Convert to dashboard tasks and filter/sort
+      const airtableTasks: DashboardTask[] = allTasks
         .map((record: any) => {
           const task = {
             id: record.id,
-            description: record.fields.Name || record.fields.description || 'Untitled',
-            rice_score: record.fields.rice_score || 0,
-            status: record.fields.status || 'pending',
-            effort: record.fields.effort || 1,
-            deadline: record.fields.due_date
+            description: record.Name || record.description || 'Untitled',
+            rice_score: record.rice_score || 0,
+            status: record.status || 'pending',
+            effort: record.effort || 1,
+            deadline: record.due_date
           };
           console.log('📝 Mapped task:', task);
           return task;
@@ -104,7 +96,7 @@ const DailyBriefing = () => {
       console.error('Dashboard error details:', {
         message: err instanceof Error ? err.message : 'Unknown error',
         stack: err instanceof Error ? err.stack : undefined,
-        hasCredentials: !!(apiKey && baseId),
+        userId: user?.id,
         timestamp: new Date().toISOString()
       });
       setError(err instanceof Error ? err.message : 'Failed to load tasks');
@@ -118,13 +110,17 @@ const DailyBriefing = () => {
   };
 
   useEffect(() => {
-    // Initial load from Airtable
-    loadTasksFromAirtable();
+    // Only load once user is available
+    if (user) {
+      loadTasksFromAirtable();
+    }
 
     // Listen for custom event from chat when tasks are updated
     const handleTaskUpdate = () => {
       console.log('📡 Detected task update, refreshing from Airtable');
-      loadTasksFromAirtable();
+      if (user) {
+        loadTasksFromAirtable();
+      }
     };
 
     window.addEventListener('tasks-updated', handleTaskUpdate);
@@ -133,7 +129,7 @@ const DailyBriefing = () => {
       window.removeEventListener('tasks-updated', handleTaskUpdate);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   // Tasks are already filtered and sorted from Airtable
   const pendingTasksWithScores = tasks;

@@ -13,7 +13,8 @@ export function checkEnvironmentVariables(): EnvCheckResult {
   const requiredVars = [
     'VITE_OPENAI_API_KEY',
     'VITE_AIRTABLE_API_KEY',
-    'VITE_AIRTABLE_BASE_ID'
+    'VITE_AIRTABLE_BASE_ID',
+    'VITE_CLERK_PUBLISHABLE_KEY'
   ];
 
   const missing: string[] = [];

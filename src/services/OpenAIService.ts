@@ -12,16 +12,32 @@ export class OpenAIService {
   private baseUrl: string = 'https://api.openai.com/v1';
   private taskStateManager: TaskStateManager;
   private airtableService: any; // Will be injected
+  private userId: string;
 
-  constructor(apiKey: string, taskStateManager: TaskStateManager, airtableService?: any) {
+  constructor(apiKey: string, taskStateManager: TaskStateManager, airtableService: any, userId: string) {
     this.apiKey = apiKey;
     this.taskStateManager = taskStateManager;
     this.airtableService = airtableService;
+    this.userId = userId;
   }
 
   private getSystemPrompt(): string {
     const taskStates = this.taskStateManager.getStateSummaryWithFocus();
     const existingTasks = this.taskStateManager.getAllTasks();
+
+    // Get current date and time
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const timeStr = now.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
 
     let contextualGreeting = "";
     if (existingTasks.length > 0) {
@@ -34,6 +50,9 @@ export class OpenAIService {
     }
 
     return `You are Bishma, named after the wise and strategic character from the Mahabharata. You are a task prioritization specialist who brings calm, methodical order to the chaos of modern work life.
+
+CURRENT DATE & TIME: ${dateStr} at ${timeStr}
+You are aware of the current date and can reference it when discussing deadlines, urgency, or scheduling tasks.
 
 ${contextualGreeting}
 
@@ -608,7 +627,8 @@ Be conversational, intelligent, and genuinely helpful. Extract information natur
       const airtableId = await this.airtableService.createTask(
         task,
         riceScore,
-        this.taskStateManager.getSessionId()
+        this.taskStateManager.getSessionId(),
+        this.userId
       );
 
       console.log('✅ Real Airtable record created:', airtableId);

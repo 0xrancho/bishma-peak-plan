@@ -30,16 +30,20 @@ export class AirtableService {
     this.baseId = baseId;
   }
 
-  async createTask(taskState: TaskState, riceScore: RICEScore, sessionId: string): Promise<string> {
+  async createTask(taskState: TaskState, riceScore: RICEScore, sessionId: string, userId: string): Promise<string> {
     console.log('📝 AirtableService.createTask called with:', {
       taskId: taskState.id,
       taskDescription: taskState.description,
       riceScore,
-      sessionId
+      sessionId,
+      userId
     });
 
     // Only include fields that can be written to (not computed fields)
     const record = {
+      // Multi-tenant isolation
+      user_id: userId,
+
       // Core RICE fields - using correct Airtable field names
       Name: taskState.description,  // Task description goes to "Name" field (what you see)
       description: taskState.id,  // Task ID goes to "description" field
@@ -131,10 +135,18 @@ export class AirtableService {
     }
   }
 
-  async getTasks(sessionId: string): Promise<AirtableTask[]> {
+  async getTasks(userId: string, sessionId?: string): Promise<AirtableTask[]> {
     try {
+      // Build filter formula - always filter by userId, optionally by sessionId
+      let filterFormula = `{user_id}='${userId}'`;
+      if (sessionId) {
+        filterFormula = `AND({user_id}='${userId}', {session_id}='${sessionId}')`;
+      }
+
+      console.log('📡 Fetching tasks with filter:', filterFormula);
+
       const response = await fetch(
-        `${this.baseUrl}/${this.baseId}/${this.tasksTableId}?filterByFormula={session_id}='${sessionId}'&sort[0][field]=rice_score&sort[0][direction]=desc`,
+        `${this.baseUrl}/${this.baseId}/${this.tasksTableId}?filterByFormula=${encodeURIComponent(filterFormula)}&sort[0][field]=rice_score&sort[0][direction]=desc`,
         {
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
@@ -143,10 +155,13 @@ export class AirtableService {
       );
 
       if (!response.ok) {
-        throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ Airtable API error response:', errorText);
+        throw new Error(`Airtable API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('✅ Tasks fetched:', data.records?.length || 0);
       return data.records.map((record: any) => ({
         id: record.id,
         ...record.fields
@@ -173,6 +188,108 @@ export class AirtableService {
 
     } catch (error) {
       console.error('Airtable delete failed:', error);
+      throw error;
+    }
+  }
+
+  // User Preferences methods
+  async getUserPreferences(userId: string): Promise<any | null> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/${this.baseId}/${this.preferencesTableId}?filterByFormula=${encodeURIComponent(`{user_id}='${userId}'`)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data.records.length === 0) {
+        return null; // No preferences found - new user
+      }
+
+      return {
+        id: data.records[0].id,
+        ...data.records[0].fields
+      };
+
+    } catch (error) {
+      console.error('Airtable fetch preferences failed:', error);
+      throw error;
+    }
+  }
+
+  async createUserPreferences(userId: string, preferences: {
+    timezone: string;
+    notification_channel?: string;
+    notification_enabled?: boolean;
+    ai_personality: 'wise-ol-sage' | 'helpful-assistant' | 'inspiring-life-coach';
+  }): Promise<string> {
+    try {
+      const response = await fetch(`${this.baseUrl}/${this.baseId}/${this.preferencesTableId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fields: {
+            user_id: userId,
+            timezone: preferences.timezone,
+            notification_channel: preferences.notification_channel || '',
+            notification_enabled: preferences.notification_enabled ?? true,
+            ai_personality: preferences.ai_personality,
+            created_at: new Date().toISOString()
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Airtable API error: ${response.status} ${response.statusText} - ${errorBody}`);
+      }
+
+      const data = await response.json();
+      return data.id;
+
+    } catch (error) {
+      console.error('Airtable create preferences failed:', error);
+      throw error;
+    }
+  }
+
+  async updateUserPreferences(recordId: string, preferences: Partial<{
+    timezone: string;
+    notification_channel: string;
+    notification_enabled: boolean;
+    ai_personality: 'wise-ol-sage' | 'helpful-assistant' | 'inspiring-life-coach';
+  }>): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/${this.baseId}/${this.preferencesTableId}/${recordId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fields: {
+            ...preferences,
+            updated_at: new Date().toISOString()
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+      }
+
+    } catch (error) {
+      console.error('Airtable update preferences failed:', error);
       throw error;
     }
   }
